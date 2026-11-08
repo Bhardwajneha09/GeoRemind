@@ -4,6 +4,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 
+const { sequelize } = require('./config/database');
 const { apiRateLimit } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth');
 const geofenceRoutes = require('./routes/geofences');
@@ -12,8 +13,8 @@ const locationRoutes = require('./routes/location');
 
 const app = express();
 
-// In production the app runs behind a reverse proxy (Caddy). Trust it so that
-// req.ip is the real client IP and rate limits are applied per user, not per proxy.
+// In production the app runs behind a reverse proxy (Caddy).
+// Trust it so that req.ip is the real client IP.
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
@@ -21,11 +22,12 @@ if (process.env.NODE_ENV === 'production') {
 // Security and CORS middleware
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Allows inline scripts in frontend if needed
-    // Helmet's default ("no-referrer") makes OpenStreetMap block the map tiles
+    contentSecurityPolicy: false,
+    // Allows OpenStreetMap to load map tiles
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
   })
 );
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5500',
@@ -33,7 +35,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000'
 ];
 
-// Allow the deployed site as well, e.g. FRONTEND_URL=https://georemind.duckdns.org
+// Allow deployed frontend origins
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',')
     .map((url) => url.trim().replace(/\/$/, ''))
@@ -56,9 +58,25 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint with database connectivity check
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+
+    res.status(200).json({
+      status: 'healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check database error:', error.message);
+
+    res.status(503).json({
+      status: 'unhealthy',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Apply general API rate limiting to all /api routes
@@ -81,9 +99,13 @@ app.use((req, res, next) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Application Error:', err);
+
   const status = err.status || err.statusCode || 500;
+
   res.status(status).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error')
+    error: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
+      : (err.message || 'Internal server error')
   });
 });
 
