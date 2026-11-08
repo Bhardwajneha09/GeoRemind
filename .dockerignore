@@ -1,0 +1,23 @@
+
+# Environment files and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Dependencies
+**/node_modules
+**/coverage
+
+# Git
+.git
+.gitignore
+
+# Local development files
+**/*.log
+**/*.bak
+.DS_Store
+Thumbs.db
+
+# Documentation
+README*
