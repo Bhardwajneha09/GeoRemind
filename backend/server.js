@@ -35,44 +35,73 @@ io.on('connection', (socket) => {
   socket.on('authenticate', (data) => {
     try {
       const token = data && data.token ? data.token : null;
+
       if (!token) {
-        return socket.emit('error', { message: 'Token is required for authentication' });
+        return socket.emit('error', {
+          message: 'Token is required for authentication'
+        });
       }
 
       const decoded = jwt.verify(token, JWT_SECRET);
       socket.userId = decoded.id;
+
       const userRoom = `user:${decoded.id}`;
       socket.join(userRoom);
 
-      console.log(`[Socket.io] Socket ${socket.id} authenticated for user ${decoded.id} and joined room ${userRoom}`);
-      socket.emit('authenticated', { userId: decoded.id, room: userRoom });
+      console.log(
+        `[Socket.io] Socket ${socket.id} authenticated for user ${decoded.id} and joined room ${userRoom}`
+      );
+
+      socket.emit('authenticated', {
+        userId: decoded.id,
+        room: userRoom
+      });
     } catch (err) {
-      console.warn(`[Socket.io] Authentication failed for socket ${socket.id}:`, err.message);
-      socket.emit('error', { message: 'Authentication failed: Invalid or expired token' });
+      console.warn(
+        `[Socket.io] Authentication failed for socket ${socket.id}:`,
+        err.message
+      );
+
+      socket.emit('error', {
+        message: 'Authentication failed: Invalid or expired token'
+      });
     }
   });
 
   /**
    * Client join:room event.
-   * Allows authenticated socket to join specific user room user:${userId}.
+   * Allows authenticated socket to join its own user room.
    */
   socket.on('join:room', (roomName) => {
     if (!socket.userId) {
-      return socket.emit('error', { message: 'Must authenticate before joining rooms' });
+      return socket.emit('error', {
+        message: 'Must authenticate before joining rooms'
+      });
     }
 
     const expectedRoom = `user:${socket.userId}`;
+
     if (roomName === expectedRoom) {
       socket.join(roomName);
-      console.log(`[Socket.io] Socket ${socket.id} joined room ${roomName}`);
-      socket.emit('joined:room', { room: roomName });
+
+      console.log(
+        `[Socket.io] Socket ${socket.id} joined room ${roomName}`
+      );
+
+      socket.emit('joined:room', {
+        room: roomName
+      });
     } else {
-      socket.emit('error', { message: 'Unauthorized room access' });
+      socket.emit('error', {
+        message: 'Unauthorized room access'
+      });
     }
   });
 
   socket.on('disconnect', (reason) => {
-    console.log(`[Socket.io] Socket disconnected: ${socket.id} (Reason: ${reason})`);
+    console.log(
+      `[Socket.io] Socket disconnected: ${socket.id} (Reason: ${reason})`
+    );
   });
 });
 
@@ -82,15 +111,25 @@ io.on('connection', (socket) => {
 async function startServer() {
   try {
     console.log('--- Initializing Location Reminder Backend ---');
-    await testConnection();
+
+    // Verify database connectivity before starting the server
+    const isDatabaseConnected = await testConnection();
+
+    if (!isDatabaseConnected) {
+      throw new Error(
+        'Database connection failed. Server startup aborted.'
+      );
+    }
 
     // Schedule daily morning reminder digest
     scheduleDailyDigest();
 
     server.listen(PORT, () => {
       console.log(`🚀 Server listening on http://localhost:${PORT}`);
-      console.log(`⚙️  Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📡 Real-time Socket.io initialized`);
+      console.log(
+        `⚙️  Environment: ${process.env.NODE_ENV || 'development'}`
+      );
+      console.log('📡 Real-time Socket.io initialized');
     });
   } catch (error) {
     console.error('Fatal error during startup:', error);

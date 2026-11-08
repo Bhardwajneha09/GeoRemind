@@ -677,7 +677,7 @@ async function submitAddForm(event) {
   const submitBtn = document.getElementById('btn-modal-submit');
 
   const message = msgInput ? msgInput.value.trim() : '';
-  const triggerType = triggerSelect ? triggerSelect.value : 'ENTER';
+  const triggerType = triggerSelect ? triggerSelect.value.toLowerCase() : 'enter';
   const isRecurring = recurringToggle ? recurringToggle.checked : false;
 
   if (!message) {
