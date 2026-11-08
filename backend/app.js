@@ -12,10 +12,18 @@ const locationRoutes = require('./routes/location');
 
 const app = express();
 
+// In production the app runs behind a reverse proxy (Caddy). Trust it so that
+// req.ip is the real client IP and rate limits are applied per user, not per proxy.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Security and CORS middleware
 app.use(
   helmet({
-    contentSecurityPolicy: false // Allows inline scripts in frontend if needed
+    contentSecurityPolicy: false, // Allows inline scripts in frontend if needed
+    // Helmet's default ("no-referrer") makes OpenStreetMap block the map tiles
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
   })
 );
 const allowedOrigins = [
@@ -24,6 +32,14 @@ const allowedOrigins = [
   'http://127.0.0.1:5500',
   'http://127.0.0.1:3000'
 ];
+
+// Allow the deployed site as well, e.g. FRONTEND_URL=https://georemind.duckdns.org
+if (process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL.split(',')
+    .map((url) => url.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+    .forEach((url) => allowedOrigins.push(url));
+}
 
 app.use(cors({
   origin: function (origin, callback) {
