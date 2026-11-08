@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: geo_reminders_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: geo_reminders
+      MYSQL_USER: geo_user
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+
+  # Uncomment to run the backend in Docker too
+  # backend:
+  #   build: ./backend
+  #   container_name: geo_reminders_backend
+  #   restart: unless-stopped
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #   environment:
+  #     NODE_ENV: production
+  #     DB_HOST: mysql
+  #     DB_PORT: 3306
+  #     DB_NAME: geo_reminders
+  #     DB_USER: geo_user
+  #     DB_PASS: secret
+  #   ports:
+  #     - "3000:3000"
+
+volumes:
+  mysql_data:
+    driver: local
