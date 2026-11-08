@@ -3,7 +3,7 @@
  * Handles user authentication, token storage, authorized fetch, and landing page interactions.
  */
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 const TOKEN_KEY = 'geo_token';
 const USER_KEY = 'geo_user';
 

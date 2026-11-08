@@ -66,7 +66,7 @@ function initSocket() {
         return null;
     }
 
-    socketInstance = io('http://localhost:3000', {
+    socketInstance = io({
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 2000
